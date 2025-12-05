@@ -156,11 +156,33 @@ export class SpriteFileLoader {
       await this.loadManifest();
     }
 
-    const key = `${type}_${String(index).padStart(3, '0')}`;
+    let key = `${type}_${String(index).padStart(3, '0')}`;
+
+    // Fallback mapping for missing planet types
+    const fallbackMap = {
+      'brown_dwarf': 'rocky',
+      'super_earth': 'terran',
+      'mini_neptune': 'ice_giant',
+      'hot_jupiter': 'gas_giant',
+      'lava': 'volcanic'
+    };
 
     if (!this.manifest || !this.manifest.sprites.planets[key]) {
-      console.warn(`[SpriteFileLoader] No sprite file for planet: ${key}`);
-      return null;
+      // Try fallback type if available
+      if (fallbackMap[type]) {
+        const fallbackKey = `${fallbackMap[type]}_${String(index).padStart(3, '0')}`;
+        if (this.manifest && this.manifest.sprites.planets[fallbackKey]) {
+          console.warn(`[SpriteFileLoader] Using fallback for ${type}: ${fallbackMap[type]}`);
+          key = fallbackKey;
+        } else {
+          // Last resort: try rocky_000
+          key = 'rocky_000';
+          console.warn(`[SpriteFileLoader] Using default fallback for ${type}: rocky`);
+        }
+      } else {
+        console.warn(`[SpriteFileLoader] No sprite file for planet: ${key}, using rocky fallback`);
+        key = 'rocky_000';
+      }
     }
 
     const spriteInfo = this.manifest.sprites.planets[key];

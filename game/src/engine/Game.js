@@ -32,6 +32,7 @@ import { SaveSystem } from './SaveSystem.js';
 // Enhanced systems
 import { PerformanceOptimizer } from './PerformanceOptimizer.js';
 import { EnhancedEffects } from './EnhancedEffects.js';
+import { EnhancedEffectsSystem } from './effects/EnhancedEffectsSystem.js';
 import { RetroScreenEffects } from './RetroScreenEffects.js';
 import { ENHANCED_ARTIFACTS, generateRandomArtifact } from './EnhancedItems.js';
 // PERFORMANCE: Optimized rendering and particle systems
@@ -390,6 +391,7 @@ export class Game {
     // Initialize enhanced systems
     this.performanceOptimizer = new PerformanceOptimizer(this);
     this.enhancedEffects = new EnhancedEffects(this);
+    this.enhancedEffectsSystem = new EnhancedEffectsSystem(this);
     this.retroScreenEffects = new RetroScreenEffects(canvas, ctx);
 
     // PERFORMANCE: Initialize optimized rendering and particle systems
@@ -1221,7 +1223,7 @@ export class Game {
         const planetSpriteData = await this.spriteManager.celestialGen.generatePlanetSprite({
           type: planet.type || 'terran',
           radius: Math.min(planet.radius || 50, maxPlanetRadius),
-          pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+          pixelSize: 2,  // BALANCED: Pixelated look without killing performance
           seed: systemData.seed + i * 1000,
           animationFrames: 24  // Full rotation cycle for smooth animation
         });
@@ -1249,7 +1251,7 @@ export class Game {
             const moonSpriteData = await this.spriteManager.celestialGen.generateMoonSprite({
               type: moon.type || 'rocky',
               radius: Math.min(moon.radius || 20, maxMoonRadius),
-              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+              pixelSize: 2,  // BALANCED: Pixelated look without killing performance
               seed: systemData.seed + i * 1000 + j * 100
             });
 
@@ -1281,7 +1283,7 @@ export class Game {
           const asteroidSpriteData = await this.spriteManager.objectGen.generateAsteroidSprite({
             type: asteroid.type || 'rocky',
             radius: asteroid.radius || 20,
-            pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+            pixelSize: 2,  // BALANCED: Pixelated look without killing performance
             seed: systemData.seed + i * 500,
             irregularity: 0.3
           });
@@ -5811,6 +5813,11 @@ export class Game {
           this._enhancedEffectsCounter = 0;
           this.enhancedEffects.update(dt * 2); // Scale dt for missed frame
         }
+      }
+
+      // Update new enhanced effects system
+      if (this.enhancedEffectsSystem) {
+        this.enhancedEffectsSystem.update(dt);
       }
 
       // OPTIMIZED: Update retro screen effects every other frame

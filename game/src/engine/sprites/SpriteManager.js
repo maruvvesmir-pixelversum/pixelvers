@@ -18,6 +18,8 @@ import { CelestialSpriteGenerator } from './CelestialSpriteGenerator.js';
 import { ShipSpriteGenerator } from './ShipSpriteGenerator.js';
 import { ObjectSpriteGenerator } from './ObjectSpriteGenerator.js';
 import { SpriteRenderer } from './SpriteRenderer.js';
+import { EnhancedShipSpriteGenerator } from './EnhancedShipSpriteGenerator.js';
+import { StructureSpriteGenerator } from './StructureSpriteGenerator.js';
 
 export class SpriteManager {
   constructor(game) {
@@ -27,6 +29,8 @@ export class SpriteManager {
     this.celestialGen = new CelestialSpriteGenerator();
     this.shipGen = new ShipSpriteGenerator();
     this.objectGen = new ObjectSpriteGenerator();
+    this.enhancedShipGen = new EnhancedShipSpriteGenerator();
+    this.structureGen = new StructureSpriteGenerator();
 
     // Initialize sprite renderer
     this.renderer = new SpriteRenderer(game);
@@ -145,7 +149,7 @@ export class SpriteManager {
 
         // PIXEL SIZE: Smaller pixels for heavy pixelation and detail
         // Matches concept art with many tiny pixels
-        const BASE_PIXEL_SIZE = 0.5;  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+        const BASE_PIXEL_SIZE = 2;  // BALANCED: Pixelated look without killing performance
         const scaleFactor = starRadius / spriteRadius;
         const adjustedPixelSize = Math.max(BASE_PIXEL_SIZE, Math.ceil(BASE_PIXEL_SIZE * scaleFactor * 0.5));  // Scale adjustment
 
@@ -218,7 +222,7 @@ export class SpriteManager {
             const planetSprite = await this.celestialGen.generatePlanetSprite({
               type: planet.type || 'terran',
               radius: Math.min(planet.radius || 50, maxPlanetRadius),
-              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+              pixelSize: 2,  // BALANCED: Pixelated look without killing performance
               seed: systemData.seed + i * 1000,
               animationFrames: 24  // Matches generated sprite frame count
             });
@@ -261,7 +265,7 @@ export class SpriteManager {
                 const moonSprite = await this.celestialGen.generateMoonSprite({
                   type: moon.type || 'rocky',
                   radius: Math.min(moon.radius || 20, maxMoonRadius),
-                  pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+                  pixelSize: 2,  // BALANCED: Pixelated look without killing performance
                   seed: systemData.seed + i * 1000 + j * 100
                 });
 
@@ -307,7 +311,7 @@ export class SpriteManager {
             const asteroidSprite = await this.objectGen.generateAsteroidSprite({
               type: asteroid.type || 'rocky',
               radius: asteroid.radius || 20,
-              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+              pixelSize: 2,  // BALANCED: Pixelated look without killing performance
               seed: systemData.seed + i * 500,
               irregularity: 0.3
             });
@@ -463,7 +467,7 @@ export class SpriteManager {
       const asteroidSprite = await this.objectGen.generateAsteroidSprite({
         type: asteroid.type || 'rocky',
         radius: asteroid.radius || 20,
-        pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+        pixelSize: 2,  // BALANCED: Pixelated look without killing performance
         seed: systemSeed + i * 500,
         irregularity: 0.3
       });
