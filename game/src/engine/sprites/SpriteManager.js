@@ -140,14 +140,14 @@ export class SpriteManager {
 
         // CANVAS SIZE LIMIT: Larger sprites for better quality and detail
         // Stars need higher resolution to show surface features
-        const MAX_SPRITE_RADIUS = 150;  // ENHANCED: Bigger sprites for more detail
+        const MAX_SPRITE_RADIUS = 300;  // ULTRA ENHANCED: Much larger to prevent clipping when scaled
         const spriteRadius = Math.min(starRadius, MAX_SPRITE_RADIUS);
 
         // PIXEL SIZE: Smaller pixels for heavy pixelation and detail
         // Matches concept art with many tiny pixels
-        const BASE_PIXEL_SIZE = 2;  // ENHANCED: Tiny pixels for detailed, heavily pixelated look
+        const BASE_PIXEL_SIZE = 0.5;  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
         const scaleFactor = starRadius / spriteRadius;
-        const adjustedPixelSize = Math.max(BASE_PIXEL_SIZE, Math.ceil(BASE_PIXEL_SIZE * scaleFactor * 0.4));  // Scale adjustment
+        const adjustedPixelSize = Math.max(BASE_PIXEL_SIZE, Math.ceil(BASE_PIXEL_SIZE * scaleFactor * 0.5));  // Scale adjustment
 
         console.log(`[SpriteManager] Star radius: ${starRadius}px (sprite: ${spriteRadius}px), class: ${systemData.star.stellarClass || 'G'}, pixelSize: ${adjustedPixelSize}`);
 
@@ -218,7 +218,7 @@ export class SpriteManager {
             const planetSprite = await this.celestialGen.generatePlanetSprite({
               type: planet.type || 'terran',
               radius: Math.min(planet.radius || 50, maxPlanetRadius),
-              pixelSize: 2,  // ENHANCED: Tiny pixels for detailed surfaces
+              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
               seed: systemData.seed + i * 1000,
               animationFrames: 24  // Matches generated sprite frame count
             });
@@ -261,7 +261,7 @@ export class SpriteManager {
                 const moonSprite = await this.celestialGen.generateMoonSprite({
                   type: moon.type || 'rocky',
                   radius: Math.min(moon.radius || 20, maxMoonRadius),
-                  pixelSize: 2,  // ENHANCED: Tiny pixels for surface detail
+                  pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
                   seed: systemData.seed + i * 1000 + j * 100
                 });
 
@@ -307,7 +307,7 @@ export class SpriteManager {
             const asteroidSprite = await this.objectGen.generateAsteroidSprite({
               type: asteroid.type || 'rocky',
               radius: asteroid.radius || 20,
-              pixelSize: 2,
+              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
               seed: systemData.seed + i * 500,
               irregularity: 0.3
             });
@@ -463,7 +463,7 @@ export class SpriteManager {
       const asteroidSprite = await this.objectGen.generateAsteroidSprite({
         type: asteroid.type || 'rocky',
         radius: asteroid.radius || 20,
-        pixelSize: 2,
+        pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
         seed: systemSeed + i * 500,
         irregularity: 0.3
       });

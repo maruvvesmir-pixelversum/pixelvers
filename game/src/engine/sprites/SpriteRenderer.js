@@ -94,11 +94,23 @@ export class SpriteRenderer {
     const screenX = x - camX;
     const screenY = y - camY;
 
-    // Viewport culling
+    // Viewport culling - check screen coordinates against screen bounds
     const radius = Math.max(frame.width, frame.height) * scale / 2;
-    if (!this.isInViewport(x, y, radius)) {
-      this.spritesCulled++;
-      return;
+    // If camX/camY are 0, we're using screen coordinates, check against screen bounds
+    // If camX/camY are set, we're using world coordinates, check against world viewport
+    if (camX === 0 && camY === 0) {
+      // Screen coordinate culling
+      if (screenX + radius < 0 || screenX - radius > this.viewport.width ||
+          screenY + radius < 0 || screenY - radius > this.viewport.height) {
+        this.spritesCulled++;
+        return;
+      }
+    } else {
+      // World coordinate culling (old behavior)
+      if (!this.isInViewport(x, y, radius)) {
+        this.spritesCulled++;
+        return;
+      }
     }
 
     // Save context state
@@ -207,11 +219,23 @@ export class SpriteRenderer {
     const screenX = x - camX;
     const screenY = y - camY;
 
-    // Viewport culling
+    // Viewport culling - check screen coordinates against screen bounds
     const radius = Math.max(frame.width, frame.height) * scale / 2;
-    if (!this.isInViewport(x, y, radius)) {
-      this.spritesCulled++;
-      return;
+    // If camX/camY are 0, we're using screen coordinates, check against screen bounds
+    // If camX/camY are set, we're using world coordinates, check against world viewport
+    if (camX === 0 && camY === 0) {
+      // Screen coordinate culling
+      if (screenX + radius < 0 || screenX - radius > this.viewport.width ||
+          screenY + radius < 0 || screenY - radius > this.viewport.height) {
+        this.spritesCulled++;
+        return;
+      }
+    } else {
+      // World coordinate culling (old behavior)
+      if (!this.isInViewport(x, y, radius)) {
+        this.spritesCulled++;
+        return;
+      }
     }
 
     // Save context

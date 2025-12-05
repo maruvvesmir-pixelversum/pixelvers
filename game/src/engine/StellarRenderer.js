@@ -10,7 +10,8 @@
  */
 
 export class StellarRenderer {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     // EXPANDED: Complete stellar classification system with all spectral types and subtypes
     this.stellarClasses = {
       // Main Sequence Stars (O-M classification)
@@ -238,21 +239,25 @@ export class StellarRenderer {
     const spriteId = `star_${stellarData.class}_${seed}`;
     if (this.game && this.game.spriteManager) {
       const cached = this.game.spriteManager.getSprite(spriteId);
-      if (cached && cached.sprite && cached.sprite.frameWidth) {
+      if (cached && cached.frameWidth) {
         // The sprite frames are already sized for the star
         // Scale to match the desired radius (diameter / frameWidth)
         // Since frameWidth represents the full star diameter in the sprite
-        const spriteScale = (radius * 2) / cached.sprite.frameWidth;
+        const spriteScale = (radius * 2) / cached.frameWidth;
 
         // Cap the scale to prevent stars from being too large and getting cut off
-        const maxScale = 2.0; // Maximum 2x the original sprite size
-        const finalScale = Math.min(spriteScale, maxScale);
+        const maxScale = 6.0; // ULTRA INCREASED: Allow much larger scaling to prevent clipping
+        let finalScale = Math.min(spriteScale, maxScale);
+
+        // CRITICAL FIX: Reduce scale by 25% to add padding and prevent edge clipping
+        // Pre-generated sprites fill the frame, so we need significant breathing room
+        finalScale = finalScale * 0.75;
 
         const rendered = this.game.spriteManager.renderAnimatedSprite(ctx, spriteId, x, y, this.time, {
           scale: finalScale,
           alpha: 1.0,
-          camX: this.game.camera?.x || 0,
-          camY: this.game.camera?.y || 0
+          camX: 0,  // x,y are already screen coordinates, don't offset again
+          camY: 0
         });
         if (rendered) {
           ctx.restore();

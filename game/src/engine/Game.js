@@ -1037,6 +1037,9 @@ export class Game {
     this.currentSystemIndex = systemIndex;
     this.currentSystemData = systemData;
     this._stellarDebugLogged = false; // Reset debug flag for new system
+    this._missingPlanetLogged = false; // Reset sprite debug flags
+    this._missingMoonLogged = false;
+    this._missingAsteroidLogged = false;
 
     const generator = new EnhancedSystemGenerator(systemData);
     const system = generator.generate();
@@ -1184,12 +1187,13 @@ export class Game {
         await this.spriteManager.generateSystemSprites(starGenData);
         console.log('[Game] ✓ Star sprite ready');
 
-        // Start game immediately with star sprite only
-        this.systemLoading = false;
-
-        // FIX: Wait for planet/moon sprites to finish generating before continuing
-        // Planets won't render if sprites aren't ready!
+        // FIX: Generate ALL sprites before starting the game
+        // This ensures planets/moons/asteroids are ready when rendering starts
         await this.generateRemainingSpritesAsync(systemData);
+        console.log('[Game] ✓ All sprites ready');
+
+        // Start game with all sprites ready
+        this.systemLoading = false;
       } catch (error) {
         console.error('[Game] Star sprite generation failed:', error);
         this.systemLoading = false;
@@ -1213,12 +1217,13 @@ export class Game {
       for (let i = 0; i < this.planets.length; i++) {
         const planet = this.planets[i];
         // Use generatePlanetSprite which properly creates sprite sheets
-        const maxPlanetRadius = 40;  // ULTRA-OPTIMIZED: Match SpriteManager cap
+        const maxPlanetRadius = 60;  // Enhanced: Bigger sprites for more detail
         const planetSpriteData = await this.spriteManager.celestialGen.generatePlanetSprite({
           type: planet.type || 'terran',
           radius: Math.min(planet.radius || 50, maxPlanetRadius),
+          pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
           seed: systemData.seed + i * 1000,
-          animationFrames: 2  // ULTRA-OPTIMIZED: Match SpriteManager settings
+          animationFrames: 24  // Full rotation cycle for smooth animation
         });
 
         // Cache it with the correct ID
@@ -1240,10 +1245,11 @@ export class Game {
           for (let j = 0; j < planet.moons.length; j++) {
             const moon = planet.moons[j];
             // Use generateMoonSprite wrapper (which delegates to generatePlanet)
-            const maxMoonRadius = 15;  // ULTRA-OPTIMIZED: Match SpriteManager cap
+            const maxMoonRadius = 25;  // Enhanced: Bigger moons with more detail
             const moonSpriteData = await this.spriteManager.celestialGen.generateMoonSprite({
               type: moon.type || 'rocky',
               radius: Math.min(moon.radius || 20, maxMoonRadius),
+              pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
               seed: systemData.seed + i * 1000 + j * 100
             });
 
@@ -1265,6 +1271,39 @@ export class Game {
 
         // Yield to browser every planet to prevent freezing
         await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+
+      // Generate asteroid sprites
+      if (this.asteroids && this.asteroids.length > 0) {
+        console.log(`[Game] Generating ${this.asteroids.length} asteroid sprites...`);
+        for (let i = 0; i < this.asteroids.length; i++) {
+          const asteroid = this.asteroids[i];
+          const asteroidSpriteData = await this.spriteManager.objectGen.generateAsteroidSprite({
+            type: asteroid.type || 'rocky',
+            radius: asteroid.radius || 20,
+            pixelSize: 0.5,  // ULTRA ENHANCED: Even tinier pixels for maximum pixelation
+            seed: systemData.seed + i * 500,
+            irregularity: 0.3
+          });
+
+          const asteroidId = `asteroid_${systemData.seed}_${i}`;
+          if (asteroidSpriteData && asteroidSpriteData.name) {
+            this.spriteManager.spriteCache.set(asteroidId, {
+              type: 'asteroid',
+              sprite: asteroidSpriteData,
+              data: asteroid,
+              index: i
+            });
+            console.log(`[Game] ✓ Cached asteroid sprite: ${asteroidId}`);
+          } else {
+            console.error(`[Game] ✗ Failed to generate asteroid sprite ${i}`);
+          }
+
+          // Yield every 5 asteroids to prevent freezing
+          if (i % 5 === 0) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+          }
+        }
       }
 
       console.log('[Game] ✓ All sprites generated progressively');
@@ -2811,6 +2850,11 @@ export class Game {
       this.optimizedRenderer.updateViewport(camX, camY, this.width, this.height);
     }
 
+    // Update sprite renderer viewport for culling
+    if (this.spriteManager && this.spriteManager.renderer) {
+      this.spriteManager.renderer.updateViewport(camX, camY, this.width, this.height);
+    }
+
     // Background
     ctx.fillStyle = this.PALETTE.voidBlack;
     ctx.fillRect(0, 0, this.width, this.height);
@@ -3085,50 +3129,44 @@ export class Game {
         if (px < -1800 || px > this.width + 1800 || py < -1800 || py > this.height + 1800) continue;
       }
 
-      // SPRITES: Use sprite-based rendering (with emergency fallback only if sprite system failed)
-      if (this.spriteManager && this.useSpriteRendering) {
+      // SPRITES: Use sprite-based rendering
+      if (this.spriteManager && this.useSpriteRendering && this.currentSystemData) {
         const spriteId = `planet_${this.currentSystemData.seed}_${planetIdx}`;
 
-        // FIX: Calculate dynamic shadow angle using world coordinates (not planet.x/y which don't exist)
-        // Planets use distance/angle, not x/y coordinates
-        const planetWorldX = this.star.x + cosAngle * planet.distance;
-        const planetWorldY = this.star.y + sinAngle * planet.distance;
-        const dx = this.star.x - planetWorldX;
-        const dy = this.star.y - planetWorldY;
-        const lightAngle = Math.atan2(dy, dx);
+        // Check if sprite exists and has required properties before trying to render
+        const sprite = this.spriteManager.getSprite(spriteId);
+        if (sprite && sprite.name && sprite.image) {
+          // FIX: Calculate dynamic shadow angle using world coordinates (not planet.x/y which don't exist)
+          // Planets use distance/angle, not x/y coordinates
+          const planetWorldX = this.star.x + cosAngle * planet.distance;
+          const planetWorldY = this.star.y + sinAngle * planet.distance;
+          const dx = this.star.x - planetWorldX;
+          const dy = this.star.y - planetWorldY;
+          const lightAngle = Math.atan2(dy, dx);
 
-        const rendered = this.spriteManager.renderAnimatedSprite(
-          ctx,
-          spriteId,
-          px,
-          py,
-          this.time + planetIdx * 1000,
-          {
-            rotation: planet.rotation || 0,
-            shadowAngle: lightAngle,      // Dynamic shadow based on orbital position
-            shadowIntensity: 0.7          // Slightly stronger shadows for planets
-          }
-        );
+          // Varied rotation speed per planet (0.1 to 0.5, slower and different for each)
+          const planetAnimSpeed = 0.15 + (planetIdx % 5) * 0.07;  // Creates speeds: 0.15, 0.22, 0.29, 0.36, 0.43
 
-        // FALLBACK: If sprite not ready yet, render simple circle
-        if (!rendered) {
-          ctx.save();
-          ctx.translate(px, py);
-          ctx.beginPath();
-          ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-          ctx.fillStyle = planet.color || '#888888';
-          ctx.fill();
-          ctx.restore();
+          this.spriteManager.renderAnimatedSprite(
+            ctx,
+            spriteId,
+            px,
+            py,
+            this.time + planetIdx * 1000,
+            {
+              rotation: planet.rotation || 0,
+              shadowAngle: lightAngle,      // Dynamic shadow based on orbital position
+              shadowIntensity: 0.7,          // Slightly stronger shadows for planets
+              camX: 0,  // Already calculated screen coordinates, don't offset again
+              camY: 0,
+              scale: 1.0,
+              animSpeed: planetAnimSpeed  // Slower and varied rotation
+            }
+          );
+        } else if (!this._missingPlanetLogged) {
+          console.warn(`[Game] Planet sprite not ready or invalid: ${spriteId}`, sprite ? 'exists but incomplete' : 'not found');
+          this._missingPlanetLogged = true;
         }
-      } else if (!this.useSpriteRendering) {
-        // EMERGENCY FALLBACK: Only used if sprite system failed during initialization
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.beginPath();
-        ctx.arc(0, 0, planet.radius, 0, Math.PI * 2);
-        ctx.fillStyle = planet.color || '#888888';
-        ctx.fill();
-        ctx.restore();
       }
 
       // Moons (use sprite or renderer) - Skip moons at LOW+ LOD
@@ -3141,51 +3179,45 @@ export class Game {
         // Culling check for moons (buffer for moon size up to 150px radius)
         if (mx < -300 || mx > this.width + 300 || my < -300 || my > this.height + 300) continue;
 
-        // SPRITES: Use sprite-based rendering (with emergency fallback only if sprite system failed)
-        if (this.spriteManager && this.useSpriteRendering) {
+        // SPRITES: Use sprite-based rendering
+        if (this.spriteManager && this.useSpriteRendering && this.currentSystemData) {
           const spriteId = `moon_${this.currentSystemData.seed}_${planetIdx}_${j}`;
 
-          // FIX: Calculate moon world position correctly (planet uses distance/angle, not x/y)
-          const planetWorldX = this.star.x + cosAngle * planet.distance;
-          const planetWorldY = this.star.y + sinAngle * planet.distance;
-          const moonWorldX = planetWorldX + Math.cos(moon.angle) * moon.distance;
-          const moonWorldY = planetWorldY + Math.sin(moon.angle) * moon.distance;
-          const moonDx = this.star.x - moonWorldX;
-          const moonDy = this.star.y - moonWorldY;
-          const moonLightAngle = Math.atan2(moonDy, moonDx);
+          // Check if sprite exists and has required properties before trying to render
+          const sprite = this.spriteManager.getSprite(spriteId);
+          if (sprite && sprite.name && sprite.image) {
+            // FIX: Calculate moon world position correctly (planet uses distance/angle, not x/y)
+            const planetWorldX = this.star.x + cosAngle * planet.distance;
+            const planetWorldY = this.star.y + sinAngle * planet.distance;
+            const moonWorldX = planetWorldX + Math.cos(moon.angle) * moon.distance;
+            const moonWorldY = planetWorldY + Math.sin(moon.angle) * moon.distance;
+            const moonDx = this.star.x - moonWorldX;
+            const moonDy = this.star.y - moonWorldY;
+            const moonLightAngle = Math.atan2(moonDy, moonDx);
 
-          const rendered = this.spriteManager.renderAnimatedSprite(
-            ctx,
-            spriteId,
-            mx,
-            my,
-            this.time + j * 500,
-            {
-              rotation: moon.angle || 0,
-              shadowAngle: moonLightAngle,  // Dynamic shadow based on orbital position
-              shadowIntensity: 0.7
-            }
-          );
+            // Varied rotation speed per moon (0.2 to 0.6, slower and different for each)
+            const moonAnimSpeed = 0.25 + ((planetIdx * 10 + j) % 4) * 0.12;  // Creates varied speeds
 
-          // FALLBACK: If sprite not ready yet, render simple circle
-          if (!rendered) {
-            ctx.save();
-            ctx.translate(mx, my);
-            ctx.beginPath();
-            ctx.arc(0, 0, moon.radius, 0, Math.PI * 2);
-            ctx.fillStyle = moon.color || '#aaaaaa';
-            ctx.fill();
-            ctx.restore();
+            this.spriteManager.renderAnimatedSprite(
+              ctx,
+              spriteId,
+              mx,
+              my,
+              this.time + j * 500,
+              {
+                rotation: moon.angle || 0,
+                shadowAngle: moonLightAngle,  // Dynamic shadow based on orbital position
+                shadowIntensity: 0.7,
+                camX: 0,  // Already calculated screen coordinates, don't offset again
+                camY: 0,
+                scale: 1.0,
+                animSpeed: moonAnimSpeed  // Slower and varied rotation
+              }
+            );
+          } else if (!this._missingMoonLogged) {
+            console.warn(`[Game] Moon sprite not ready or invalid: ${spriteId}`, sprite ? 'exists but incomplete' : 'not found');
+            this._missingMoonLogged = true;
           }
-        } else if (!this.useSpriteRendering) {
-          // EMERGENCY FALLBACK: Only used if sprite system failed during initialization
-          ctx.save();
-          ctx.translate(mx, my);
-          ctx.beginPath();
-          ctx.arc(0, 0, moon.radius, 0, Math.PI * 2);
-          ctx.fillStyle = moon.color || '#aaaaaa';
-          ctx.fill();
-          ctx.restore();
         }
         }
       }
@@ -3202,33 +3234,29 @@ export class Game {
       // Buffer for asteroids (small but need visibility)
       if (ax < -100 || ax > this.width + 100 || ay < -100 || ay > this.height + 100) continue;
 
-      // SPRITES: Use sprite-based rendering (with emergency fallback only if sprite system failed)
-      if (this.spriteManager && this.useSpriteRendering) {
+      // SPRITES: Use sprite-based rendering
+      if (this.spriteManager && this.useSpriteRendering && this.currentSystemData) {
         const spriteId = `asteroid_${this.currentSystemData.seed}_${i}`;
-        const rendered = this.spriteManager.renderSprite(
-          ctx,
-          spriteId,
-          ax,
-          ay,
-          asteroid.rotation,
-          { scale: 1.0 }
-        );
 
-        // FALLBACK: If sprite not ready, use renderer
-        if (!rendered) {
-          ctx.save();
-          ctx.translate(ax, ay);
-          ctx.rotate(asteroid.rotation);
-          this.asteroidRenderer.renderAsteroid(ctx, asteroid, i, asteroid.rotation, asteroid.mined);
-          ctx.restore();
+        // Check if sprite exists and has required properties before trying to render
+        const sprite = this.spriteManager.getSprite(spriteId);
+        if (sprite && sprite.name && sprite.image) {
+          this.spriteManager.renderSprite(
+            ctx,
+            spriteId,
+            ax,
+            ay,
+            asteroid.rotation,
+            {
+              scale: 0.5,  // Make asteroids smaller - they were too big
+              camX: 0,  // Already calculated screen coordinates, don't offset again
+              camY: 0
+            }
+          );
+        } else if (!this._missingAsteroidLogged) {
+          console.warn(`[Game] Asteroid sprite not ready or invalid: ${spriteId}`, sprite ? 'exists but incomplete' : 'not found');
+          this._missingAsteroidLogged = true;
         }
-      } else if (!this.useSpriteRendering) {
-        // EMERGENCY FALLBACK: Only used if sprite system failed during initialization
-        ctx.save();
-        ctx.translate(ax, ay);
-        ctx.rotate(asteroid.rotation);
-        this.asteroidRenderer.renderAsteroid(ctx, asteroid, i, asteroid.rotation, asteroid.mined);
-        ctx.restore();
       }
     }
 
@@ -3250,7 +3278,12 @@ export class Game {
           stX,
           stY,
           this.time + i * 300, // Offset animation per station
-          { rotation: station.rotation || 0, scale: 1.0 }
+          {
+            rotation: station.rotation || 0,
+            scale: 1.0,
+            camX: 0,  // Already calculated screen coordinates, don't offset again
+            camY: 0
+          }
         );
 
         // FALLBACK: If sprite not ready, use renderer

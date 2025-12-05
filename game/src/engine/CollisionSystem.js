@@ -413,7 +413,7 @@ export class CollisionSystem {
         const asteroidPos = {
           x: this.game.star.x + Math.cos(asteroid.angle) * asteroid.distance,
           y: this.game.star.y + Math.sin(asteroid.angle) * asteroid.distance,
-          radius: asteroid.size
+          radius: asteroid.size * 0.5  // Match sprite render scale of 0.5
         };
 
         if (this.checkCircleCollision(player, asteroidPos)) {
