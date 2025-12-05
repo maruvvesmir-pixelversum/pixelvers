@@ -30,15 +30,23 @@ export class EnhancedEffectsSystem {
    * Update all effects
    */
   update(dt) {
+    // Safety check
+    if (!dt || isNaN(dt)) return;
+
     // Update engine particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
+      if (!p) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
       p.life -= dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vx *= 0.98;  // Slow down
-      p.vy *= 0.98;
-      p.alpha = Math.max(0, p.life / p.maxLife);
+      p.x += (p.vx || 0) * dt;
+      p.y += (p.vy || 0) * dt;
+      p.vx = (p.vx || 0) * 0.98;  // Slow down
+      p.vy = (p.vy || 0) * 0.98;
+      p.alpha = Math.max(0, p.life / (p.maxLife || 1));
 
       if (p.life <= 0) {
         this.particles.splice(i, 1);
@@ -48,9 +56,14 @@ export class EnhancedEffectsSystem {
     // Update shield effects
     for (let i = this.shieldEffects.length - 1; i >= 0; i--) {
       const s = this.shieldEffects[i];
+      if (!s) {
+        this.shieldEffects.splice(i, 1);
+        continue;
+      }
+
       s.life -= dt;
-      s.phase += dt * 10;  // Animation speed
-      s.alpha = Math.max(0, s.life / s.maxLife);
+      s.phase = (s.phase || 0) + dt * 10;  // Animation speed
+      s.alpha = Math.max(0, s.life / (s.maxLife || 1));
 
       if (s.life <= 0) {
         this.shieldEffects.splice(i, 1);
@@ -60,11 +73,16 @@ export class EnhancedEffectsSystem {
     // Update explosions
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       const e = this.explosions[i];
-      e.life -= dt;
-      e.radius += e.expansion * dt;
-      e.alpha = Math.max(0, e.life / e.maxLife);
+      if (!e) {
+        this.explosions.splice(i, 1);
+        continue;
+      }
 
-      if (p.life <= 0) {
+      e.life -= dt;
+      e.radius += (e.expansion || 0) * dt;
+      e.alpha = Math.max(0, e.life / (e.maxLife || 1));
+
+      if (e.life <= 0) {
         this.explosions.splice(i, 1);
       }
     }
@@ -72,12 +90,17 @@ export class EnhancedEffectsSystem {
     // Update debris
     for (let i = this.debrisParticles.length - 1; i >= 0; i--) {
       const d = this.debrisParticles[i];
+      if (!d) {
+        this.debrisParticles.splice(i, 1);
+        continue;
+      }
+
       d.life -= dt;
-      d.x += d.vx * dt;
-      d.y += d.vy * dt;
-      d.vy += dt * 50;  // Gravity (if in atmosphere)
-      d.rotation += d.rotationSpeed * dt;
-      d.alpha = Math.max(0, d.life / d.maxLife);
+      d.x += (d.vx || 0) * dt;
+      d.y += (d.vy || 0) * dt;
+      d.vy = (d.vy || 0) + dt * 50;  // Gravity (if in atmosphere)
+      d.rotation = (d.rotation || 0) + (d.rotationSpeed || 0) * dt;
+      d.alpha = Math.max(0, d.life / (d.maxLife || 1));
 
       if (d.life <= 0) {
         this.debrisParticles.splice(i, 1);
@@ -87,9 +110,14 @@ export class EnhancedEffectsSystem {
     // Update weapon effects
     for (let i = this.weaponEffects.length - 1; i >= 0; i--) {
       const w = this.weaponEffects[i];
+      if (!w) {
+        this.weaponEffects.splice(i, 1);
+        continue;
+      }
+
       w.life -= dt;
-      w.x += w.vx * dt;
-      w.y += w.vy * dt;
+      w.x += (w.vx || 0) * dt;
+      w.y += (w.vy || 0) * dt;
 
       if (w.life <= 0) {
         this.weaponEffects.splice(i, 1);
@@ -387,40 +415,49 @@ export class EnhancedEffectsSystem {
    * Render all effects
    */
   render(ctx, camX, camY) {
+    // Safety checks
+    if (!ctx) return;
+    camX = camX || 0;
+    camY = camY || 0;
+
     // Render engine/thruster particles
     this.particles.forEach(p => {
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+
       const screenX = p.x - camX;
       const screenY = p.y - camY;
 
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(screenX - p.size / 2, screenY - p.size / 2, p.size, p.size);
+      ctx.globalAlpha = p.alpha || 1.0;
+      ctx.fillStyle = p.color || '#ffffff';
+      ctx.fillRect(screenX - (p.size || 1) / 2, screenY - (p.size || 1) / 2, p.size || 1, p.size || 1);
     });
 
     // Render shield effects
     this.shieldEffects.forEach(s => {
+      if (!s || typeof s.x !== 'number' || typeof s.y !== 'number') return;
+
       const screenX = s.x - camX;
       const screenY = s.y - camY;
 
       ctx.save();
-      ctx.globalAlpha = s.alpha;
+      ctx.globalAlpha = s.alpha || 1.0;
 
       if (s.type === 'active' || s.type === 'charging') {
         // Flowing hexagonal energy shield
-        this.renderFluidShield(ctx, screenX, screenY, s.radius, s.phase, s.color);
+        this.renderFluidShield(ctx, screenX, screenY, s.radius || 50, s.phase || 0, s.color || '#4488ff');
       } else if (s.type === 'hit') {
         // Impact ripple
-        ctx.strokeStyle = s.color;
+        ctx.strokeStyle = s.color || '#4488ff';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, s.radius + Math.sin(s.phase) * 5, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, (s.radius || 50) + Math.sin(s.phase || 0) * 5, 0, Math.PI * 2);
         ctx.stroke();
       } else if (s.type === 'ripple') {
         // Expanding ripple from impact
-        ctx.strokeStyle = s.color;
+        ctx.strokeStyle = s.color || '#4488ff';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(s.impactX - camX, s.impactY - camY, s.radius, 0, Math.PI * 2);
+        ctx.arc((s.impactX || s.x) - camX, (s.impactY || s.y) - camY, s.radius || 50, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -429,30 +466,35 @@ export class EnhancedEffectsSystem {
 
     // Render explosions
     this.explosions.forEach(e => {
+      if (!e || typeof e.x !== 'number' || typeof e.y !== 'number') return;
+
       const screenX = e.x - camX;
       const screenY = e.y - camY;
 
       ctx.save();
-      ctx.globalAlpha = e.alpha;
+      ctx.globalAlpha = e.alpha || 1.0;
+
+      const radius = e.radius || 50;
+      const color = e.color || '#ff6600';
 
       if (e.type === 'flash') {
         // Bright flash
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, e.radius);
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radius);
         gradient.addColorStop(0, '#ffffff');
-        gradient.addColorStop(0.5, e.color);
+        gradient.addColorStop(0.5, color);
         gradient.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, e.radius, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
         ctx.fill();
       } else {
         // Regular explosion wave
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, e.radius);
-        gradient.addColorStop(0, e.color);
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radius);
+        gradient.addColorStop(0, color);
         gradient.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, e.radius, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -461,22 +503,27 @@ export class EnhancedEffectsSystem {
 
     // Render debris
     this.debrisParticles.forEach(d => {
+      if (!d || typeof d.x !== 'number' || typeof d.y !== 'number') return;
+
       const screenX = d.x - camX;
       const screenY = d.y - camY;
 
       ctx.save();
-      ctx.globalAlpha = d.alpha;
+      ctx.globalAlpha = d.alpha || 1.0;
       ctx.translate(screenX, screenY);
-      ctx.rotate(d.rotation);
+      ctx.rotate(d.rotation || 0);
+
+      const width = d.width || 5;
+      const height = d.height || 5;
 
       // Debris piece
-      ctx.fillStyle = d.color;
-      ctx.fillRect(-d.width / 2, -d.height / 2, d.width, d.height);
+      ctx.fillStyle = d.color || '#555555';
+      ctx.fillRect(-width / 2, -height / 2, width, height);
 
       // Fire if burning
       if (d.burning) {
         ctx.fillStyle = '#ff6600';
-        ctx.fillRect(-d.width / 3, -d.height / 3, d.width * 0.6, d.height * 0.6);
+        ctx.fillRect(-width / 3, -height / 3, width * 0.6, height * 0.6);
       }
 
       ctx.restore();
@@ -484,34 +531,42 @@ export class EnhancedEffectsSystem {
 
     // Render weapon effects
     this.weaponEffects.forEach(w => {
-      ctx.globalAlpha = w.alpha;
+      if (!w) return;
+
+      ctx.globalAlpha = w.alpha || 1.0;
 
       if (w.type === 'laser') {
         // Laser beam
-        ctx.strokeStyle = w.color;
-        ctx.lineWidth = w.thickness;
+        if (typeof w.x1 !== 'number' || typeof w.y1 !== 'number' ||
+            typeof w.x2 !== 'number' || typeof w.y2 !== 'number') return;
+
+        ctx.strokeStyle = w.color || '#ff0000';
+        ctx.lineWidth = w.thickness || 2;
         ctx.beginPath();
         ctx.moveTo(w.x1 - camX, w.y1 - camY);
         ctx.lineTo(w.x2 - camX, w.y2 - camY);
         ctx.stroke();
 
         // Laser glow
-        ctx.shadowColor = w.color;
+        ctx.shadowColor = w.color || '#ff0000';
         ctx.shadowBlur = 10;
         ctx.stroke();
         ctx.shadowBlur = 0;
       } else if (w.type === 'projectile') {
+        if (typeof w.x !== 'number' || typeof w.y !== 'number') return;
+
         const screenX = w.x - camX;
         const screenY = w.y - camY;
+        const size = w.size || 4;
 
         // Projectile
-        ctx.fillStyle = w.color;
-        ctx.fillRect(screenX - w.size / 2, screenY - w.size / 2, w.size, w.size);
+        ctx.fillStyle = w.color || '#ffaa00';
+        ctx.fillRect(screenX - size / 2, screenY - size / 2, size, size);
 
         // Trail
         if (w.trail) {
-          ctx.fillStyle = w.color + '66';
-          ctx.fillRect(screenX - w.size, screenY - w.size / 2, w.size, w.size);
+          ctx.fillStyle = (w.color || '#ffaa00') + '66';
+          ctx.fillRect(screenX - size, screenY - size / 2, size, size);
         }
       }
     });

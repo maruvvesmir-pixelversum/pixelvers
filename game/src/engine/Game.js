@@ -1701,98 +1701,119 @@ export class Game {
   }
 
   createExplosion(x, y, radius) {
-    this.explosions.push({
-      x: x,
-      y: y,
-      radius: 5,
-      maxRadius: radius,
-      life: 1,
-      maxLife: 0.8,
-      expandSpeed: radius * 2
-    });
-
-    // ENHANCED: Increased particle count for density (30 -> 80)
-    const particleCount = Math.floor(radius * 0.8); // More particles for larger explosions
-    for (let i = 0; i < particleCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 100 + Math.random() * 200;
-
-      // Color gradient - hot center to cool edges
-      let color;
-      const heat = Math.random();
-      if (heat > 0.8) {
-        color = this.PALETTE.starWhite; // Bright white (hottest)
-      } else if (heat > 0.6) {
-        color = this.PALETTE.engineBright; // Bright yellow
-      } else if (heat > 0.3) {
-        color = this.PALETTE.engineOrange; // Orange
-      } else {
-        color = '#cc4422'; // Red (cooling)
+    // ENHANCED: Use new enhanced effects system for multi-stage explosions
+    if (this.enhancedEffectsSystem) {
+      // Determine explosion type based on size
+      let explosionType = 'normal';
+      if (radius > 80) {
+        explosionType = 'large'; // Large ship or structure
+      } else if (radius < 30) {
+        explosionType = 'small'; // Small ship or projectile
       }
 
-      this.particles.push({
+      // Create enhanced multi-stage explosion
+      this.enhancedEffectsSystem.createExplosion(x, y, radius, explosionType);
+
+      // Create debris based on explosion size
+      const debrisCount = Math.min(Math.floor(radius / 3), 20);
+      if (debrisCount > 0) {
+        this.enhancedEffectsSystem.createDebris(x, y, 'ship', radius);
+      }
+    } else {
+      // Fallback to old explosion system
+      this.explosions.push({
         x: x,
         y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
+        radius: 5,
+        maxRadius: radius,
         life: 1,
-        maxLife: 0.5 + Math.random() * 0.4,
-        size: 2 + Math.random() * 5,
-        color: color,
-        type: 'explosion',
-        heat: heat // Track heat for color gradients
+        maxLife: 0.8,
+        expandSpeed: radius * 2
       });
-    }
 
-    // ENHANCED: Realistic ship debris fragments (hull plates, engine parts, wing sections)
-    const debrisTypes = [
-      { color: '#2a2a38', size: 8, type: 'hull' },      // Hull plating (dark gray)
-      { color: '#3a3a48', size: 6, type: 'armor' },     // Armor plates (lighter gray)
-      { color: '#0a0a0f', size: 10, type: 'engine' },   // Engine fragments (black)
-      { color: '#445566', size: 7, type: 'structural' }, // Structural beams (blue-gray)
-      { color: '#1a1a28', size: 5, type: 'panel' }      // Panels (very dark)
-    ];
+      // ENHANCED: Increased particle count for density (30 -> 80)
+      const particleCount = Math.floor(radius * 0.8); // More particles for larger explosions
+      for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 100 + Math.random() * 200;
 
-    for (let i = 0; i < 20; i++) { // Increased from 15 for more visible debris
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 40 + Math.random() * 120;
-      const debrisType = debrisTypes[Math.floor(Math.random() * debrisTypes.length)];
+        // Color gradient - hot center to cool edges
+        let color;
+        const heat = Math.random();
+        if (heat > 0.8) {
+          color = this.PALETTE.starWhite; // Bright white (hottest)
+        } else if (heat > 0.6) {
+          color = this.PALETTE.engineBright; // Bright yellow
+        } else if (heat > 0.3) {
+          color = this.PALETTE.engineOrange; // Orange
+        } else {
+          color = '#cc4422'; // Red (cooling)
+        }
 
-      this.particles.push({
-        x: x,
-        y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        maxLife: 1.2 + Math.random() * 0.8, // Debris lasts longer
-        size: debrisType.size + Math.random() * 4,
-        color: debrisType.color,
-        type: 'debris',
-        debrisType: debrisType.type,
-        rotation: Math.random() * Math.PI * 2,
-        rotationSpeed: (Math.random() - 0.5) * 6, // Faster tumbling
-        // Add shape variety
-        width: debrisType.size + Math.random() * 3,
-        height: debrisType.size * (0.5 + Math.random() * 0.5)
-      });
-    }
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 0.5 + Math.random() * 0.4,
+          size: 2 + Math.random() * 5,
+          color: color,
+          type: 'explosion',
+          heat: heat // Track heat for color gradients
+        });
+      }
 
-    // Add smoke particles
-    for (let i = 0; i < 20; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 20 + Math.random() * 60;
-      this.particles.push({
-        x: x,
-        y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        maxLife: 1.0 + Math.random() * 0.5,
-        size: 8 + Math.random() * 12,
-        color: '#444444',
-        type: 'smoke',
-        expansion: 1 + Math.random() * 2
-      });
+      // ENHANCED: Realistic ship debris fragments (hull plates, engine parts, wing sections)
+      const debrisTypes = [
+        { color: '#2a2a38', size: 8, type: 'hull' },      // Hull plating (dark gray)
+        { color: '#3a3a48', size: 6, type: 'armor' },     // Armor plates (lighter gray)
+        { color: '#0a0a0f', size: 10, type: 'engine' },   // Engine fragments (black)
+        { color: '#445566', size: 7, type: 'structural' }, // Structural beams (blue-gray)
+        { color: '#1a1a28', size: 5, type: 'panel' }      // Panels (very dark)
+      ];
+
+      for (let i = 0; i < 20; i++) { // Increased from 15 for more visible debris
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 40 + Math.random() * 120;
+        const debrisType = debrisTypes[Math.floor(Math.random() * debrisTypes.length)];
+
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 1.2 + Math.random() * 0.8, // Debris lasts longer
+          size: debrisType.size + Math.random() * 4,
+          color: debrisType.color,
+          type: 'debris',
+          debrisType: debrisType.type,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 6, // Faster tumbling
+          // Add shape variety
+          width: debrisType.size + Math.random() * 3,
+          height: debrisType.size * (0.5 + Math.random() * 0.5)
+        });
+      }
+
+      // Add smoke particles
+      for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 20 + Math.random() * 60;
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 1.0 + Math.random() * 0.5,
+          size: 8 + Math.random() * 12,
+          color: '#444444',
+          type: 'smoke',
+          expansion: 1 + Math.random() * 2
+        });
+      }
     }
 
     this.camera.shake = Math.min(radius / 30, 1);
@@ -1907,38 +1928,57 @@ export class Game {
   }
 
   createShieldImpact(x, y) {
-    for (let i = 0; i < 8; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 60 + Math.random() * 40;
-      this.particles.push({
-        x: x + Math.cos(angle) * 25,
-        y: y + Math.sin(angle) * 25,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        maxLife: 0.3,
-        size: 3,
-        color: this.PALETTE.shieldCyan,
-        type: 'shield'
-      });
+    // ENHANCED: Use new enhanced effects system for shield impacts
+    if (this.enhancedEffectsSystem) {
+      // Create shield hit effect at the impact point
+      this.enhancedEffectsSystem.createShieldHitEffect(
+        this.player.x,
+        this.player.y,
+        x,
+        y,
+        45 // Shield radius
+      );
+    } else {
+      // Fallback to old particle system
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 60 + Math.random() * 40;
+        this.particles.push({
+          x: x + Math.cos(angle) * 25,
+          y: y + Math.sin(angle) * 25,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 0.3,
+          size: 3,
+          color: this.PALETTE.shieldCyan,
+          type: 'shield'
+        });
+      }
     }
   }
 
   createHitSparks(x, y) {
-    for (let i = 0; i < 10; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 80 + Math.random() * 60;
-      this.particles.push({
-        x: x,
-        y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        maxLife: 0.4,
-        size: 2,
-        color: this.PALETTE.cautionOrange,
-        type: 'spark'
-      });
+    // ENHANCED: Use new enhanced effects system for hull damage sparks
+    if (this.enhancedEffectsSystem) {
+      this.enhancedEffectsSystem.createHullDamageSparks(x, y, 15);
+    } else {
+      // Fallback to old particle system
+      for (let i = 0; i < 10; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 60;
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 0.4,
+          size: 2,
+          color: this.PALETTE.cautionOrange,
+          type: 'spark'
+        });
+      }
     }
   }
 
@@ -2837,6 +2877,32 @@ export class Game {
       this.lodSystem.resetStats();
     }
 
+    // SAFETY: Ensure critical objects exist
+    if (!this.camera) {
+      console.error('[Game] Camera is null, skipping render');
+      return;
+    }
+
+    if (!this.PALETTE) {
+      console.error('[Game] PALETTE is null, skipping render');
+      return;
+    }
+
+    if (!this.player) {
+      console.error('[Game] Player is null, skipping render');
+      return;
+    }
+
+    // SAFETY: Ensure arrays exist (defensive programming)
+    if (!this.asteroids) this.asteroids = [];
+    if (!this.planets) this.planets = [];
+    if (!this.enemies) this.enemies = [];
+    if (!this.particles) this.particles = [];
+    if (!this.explosions) this.explosions = [];
+    if (!this.projectiles) this.projectiles = [];
+    if (!this.stars) this.stars = [];
+    if (!this.stations) this.stations = [];
+
     // Apply camera shake
     let shakeX = 0, shakeY = 0;
     if (this.camera.shake > 0) {
@@ -2844,8 +2910,8 @@ export class Game {
       shakeY = (Math.random() - 0.5) * this.camera.shake * 15;
     }
 
-    const camX = this.camera.x + shakeX;
-    const camY = this.camera.y + shakeY;
+    const camX = (this.camera.x || 0) + shakeX;
+    const camY = (this.camera.y || 0) + shakeY;
 
     // OPTIMIZED: Update viewport for efficient culling
     if (this.optimizedRenderer) {
@@ -3058,11 +3124,13 @@ export class Game {
     // === STAR SYSTEM SCENE RENDERING ===
 
     // Central star
-    const starX = Math.floor(this.star.x - camX);
-    const starY = Math.floor(this.star.y - camY);
+    // SAFETY: Check if star exists before rendering
+    if (this.star && typeof this.star.x === 'number' && typeof this.star.y === 'number') {
+      const starX = Math.floor(this.star.x - camX);
+      const starY = Math.floor(this.star.y - camY);
 
-    // Larger buffer for stars (up to 1200px radius, generous buffer to prevent disappearing)
-    if (starX > -2000 && starX < this.width + 2000 && starY > -2000 && starY < this.height + 2000) {
+      // Larger buffer for stars (up to 1200px radius, generous buffer to prevent disappearing)
+      if (starX > -2000 && starX < this.width + 2000 && starY > -2000 && starY < this.height + 2000) {
       // SPRITES: Use sprite-based rendering (with emergency fallback only if sprite system failed)
       if (this.spriteManager && this.useSpriteRendering) {
         // FIXED: Normalize stellar class to match sprite generation (M0 -> M, G2 -> G, etc.)
@@ -3071,10 +3139,11 @@ export class Game {
         const spriteId = `star_${stellarClass}_${this.currentSystemData.seed}`;
 
         // Calculate proper scale factor to match actual star size
-        // Stars larger than 100px radius are capped in sprite generation
-        const MAX_SPRITE_RADIUS = 100;  // ULTRA-OPTIMIZED: Match SpriteManager's cap
+        // Stars larger than 300px radius are capped in sprite generation
+        const MAX_SPRITE_RADIUS = 300;  // FIXED: Match SpriteManager's MAX_SPRITE_RADIUS (line 143)
         const actualRadius = this.star.radius || 720;
-        const spriteScale = actualRadius > MAX_SPRITE_RADIUS ? actualRadius / MAX_SPRITE_RADIUS : 1.0;
+        const baseScale = actualRadius > MAX_SPRITE_RADIUS ? actualRadius / MAX_SPRITE_RADIUS : 1.0;
+        const spriteScale = baseScale * 1.5;  // ENHANCED: Make stars 50% bigger for better visibility
 
         this.spriteManager.renderAnimatedSprite(
           ctx,
@@ -3082,7 +3151,7 @@ export class Game {
           starX,
           starY,
           this.time,
-          { scale: spriteScale, camX, camY }
+          { scale: spriteScale, camX: 0, camY: 0 }  // FIXED: Use 0,0 since starX/starY are already screen coords
         );
       } else if (!this.useSpriteRendering && this.star.stellarData) {
         // EMERGENCY FALLBACK: Only used if sprite system failed during initialization
@@ -3094,6 +3163,7 @@ export class Game {
         } else {
           this.stellarRenderer.renderStar(ctx, starX, starY, this.star.stellarData, this.systemSeed);
         }
+      }
       }
     }
 
@@ -3108,10 +3178,12 @@ export class Game {
 
     for (let planetIdx = 0; planetIdx < planetCount; planetIdx++) {
       const planet = this.planets[planetIdx];
-      const cosAngle = Math.cos(planet.angle);
-      const sinAngle = Math.sin(planet.angle);
-      const px = (this.star.x + cosAngle * planet.distance - camX) | 0;
-      const py = (this.star.y + sinAngle * planet.distance - camY) | 0;
+      if (!planet || !this.star) continue;  // SAFETY: Skip if planet or star is null
+
+      const cosAngle = Math.cos(planet.angle || 0);
+      const sinAngle = Math.sin(planet.angle || 0);
+      const px = ((this.star.x || 0) + cosAngle * (planet.distance || 0) - camX) | 0;
+      const py = ((this.star.y || 0) + sinAngle * (planet.distance || 0) - camY) | 0;
 
       // PERFORMANCE: LOD-based culling - check if planet should be rendered
       let planetLOD = 0; // Default to ULTRA
@@ -3172,9 +3244,10 @@ export class Game {
       }
 
       // Moons (use sprite or renderer) - Skip moons at LOW+ LOD
-      if (planetLOD <= this.lodSystem.LOD_LEVELS.MEDIUM) {
+      if (planetLOD <= this.lodSystem.LOD_LEVELS.MEDIUM && planet.moons && Array.isArray(planet.moons)) {
         for (let j = 0; j < planet.moons.length; j++) {
         const moon = planet.moons[j];
+        if (!moon) continue;  // SAFETY: Skip if moon is null
         const mx = px + Math.cos(moon.angle) * moon.distance;
         const my = py + Math.sin(moon.angle) * moon.distance;
 
@@ -3189,12 +3262,13 @@ export class Game {
           const sprite = this.spriteManager.getSprite(spriteId);
           if (sprite && sprite.name && sprite.image) {
             // FIX: Calculate moon world position correctly (planet uses distance/angle, not x/y)
-            const planetWorldX = this.star.x + cosAngle * planet.distance;
-            const planetWorldY = this.star.y + sinAngle * planet.distance;
-            const moonWorldX = planetWorldX + Math.cos(moon.angle) * moon.distance;
-            const moonWorldY = planetWorldY + Math.sin(moon.angle) * moon.distance;
-            const moonDx = this.star.x - moonWorldX;
-            const moonDy = this.star.y - moonWorldY;
+            if (!this.star) continue;  // SAFETY: Skip if star is null
+            const planetWorldX = (this.star.x || 0) + cosAngle * (planet.distance || 0);
+            const planetWorldY = (this.star.y || 0) + sinAngle * (planet.distance || 0);
+            const moonWorldX = planetWorldX + Math.cos(moon.angle || 0) * (moon.distance || 0);
+            const moonWorldY = planetWorldY + Math.sin(moon.angle || 0) * (moon.distance || 0);
+            const moonDx = (this.star.x || 0) - moonWorldX;
+            const moonDy = (this.star.y || 0) - moonWorldY;
             const moonLightAngle = Math.atan2(moonDy, moonDx);
 
             // Varied rotation speed per moon (0.2 to 0.6, slower and different for each)
@@ -3230,20 +3304,23 @@ export class Game {
     const asteroidCount = this.asteroids.length;
     for (let i = 0; i < asteroidCount; i++) {
       const asteroid = this.asteroids[i];
-      const ax = (this.star.x + Math.cos(asteroid.angle) * asteroid.distance - camX) | 0;
-      const ay = (this.star.y + Math.sin(asteroid.angle) * asteroid.distance - camY) | 0;
+      if (!asteroid || !this.star) continue;  // SAFETY: Skip if asteroid or star is null
+
+      const ax = ((this.star.x || 0) + Math.cos(asteroid.angle || 0) * (asteroid.distance || 0) - camX) | 0;
+      const ay = ((this.star.y || 0) + Math.sin(asteroid.angle || 0) * (asteroid.distance || 0) - camY) | 0;
 
       // Buffer for asteroids (small but need visibility)
       if (ax < -100 || ax > this.width + 100 || ay < -100 || ay > this.height + 100) continue;
 
-      // SPRITES: Use sprite-based rendering
+      // SPRITES: Use sprite-based rendering with fallback
+      let asteroidRendered = false;
       if (this.spriteManager && this.useSpriteRendering && this.currentSystemData) {
         const spriteId = `asteroid_${this.currentSystemData.seed}_${i}`;
 
         // Check if sprite exists and has required properties before trying to render
         const sprite = this.spriteManager.getSprite(spriteId);
         if (sprite && sprite.name && sprite.image) {
-          this.spriteManager.renderSprite(
+          asteroidRendered = this.spriteManager.renderSprite(
             ctx,
             spriteId,
             ax,
@@ -3256,44 +3333,54 @@ export class Game {
             }
           );
         } else if (!this._missingAsteroidLogged) {
-          console.warn(`[Game] Asteroid sprite not ready or invalid: ${spriteId}`, sprite ? 'exists but incomplete' : 'not found');
+          console.warn(`[Game] Asteroid sprite not ready: ${spriteId}`, sprite);
           this._missingAsteroidLogged = true;
         }
+      }
+
+      // FALLBACK: Use procedural rendering if sprite failed
+      if (!asteroidRendered && this.asteroidRenderer) {
+        this.asteroidRenderer.render(ctx, asteroid, ax, ay, asteroid.rotation, 0.5);
       }
     }
 
     // Stations (using sprites or enhanced renderer)
     for (let i = 0; i < this.stations.length; i++) {
       const station = this.stations[i];
-      const stX = Math.floor(this.star.x + Math.cos(station.angle) * station.distance - camX);
-      const stY = Math.floor(this.star.y + Math.sin(station.angle) * station.distance - camY);
+      if (!station || !this.star) continue;  // SAFETY: Skip if station or star is null
+
+      const stX = Math.floor((this.star.x || 0) + Math.cos(station.angle || 0) * (station.distance || 0) - camX);
+      const stY = Math.floor((this.star.y || 0) + Math.sin(station.angle || 0) * (station.distance || 0) - camY);
 
       // Buffer for stations (can be 100-200px)
       if (stX < -300 || stX > this.width + 300 || stY < -300 || stY > this.height + 300) continue;
 
       // SPRITES: Use sprite-based rendering (with emergency fallback only if sprite system failed)
-      if (this.spriteManager && this.useSpriteRendering) {
+      let stationRendered = false;
+      if (this.spriteManager && this.useSpriteRendering && this.currentSystemData) {
         const spriteId = `station_${this.currentSystemData.seed}_${i}`;
-        const rendered = this.spriteManager.renderAnimatedSprite(
-          ctx,
-          spriteId,
-          stX,
-          stY,
-          this.time + i * 300, // Offset animation per station
-          {
-            rotation: station.rotation || 0,
-            scale: 1.0,
-            camX: 0,  // Already calculated screen coordinates, don't offset again
-            camY: 0
-          }
-        );
 
-        // FALLBACK: If sprite not ready, use renderer
-        if (!rendered) {
-          this.stationRenderer.renderStation(ctx, stX, stY, station, station.rotation, this.PALETTE);
+        // Check if sprite exists before trying to render
+        const sprite = this.spriteManager.getSprite(spriteId);
+        if (sprite && sprite.name && sprite.image) {
+          stationRendered = this.spriteManager.renderAnimatedSprite(
+            ctx,
+            spriteId,
+            stX,
+            stY,
+            this.time + i * 300, // Offset animation per station
+            {
+              rotation: station.rotation || 0,
+              scale: 1.0,
+              camX: 0,  // Already calculated screen coordinates, don't offset again
+              camY: 0
+            }
+          );
         }
-      } else if (!this.useSpriteRendering) {
-        // EMERGENCY FALLBACK: Only used if sprite system failed during initialization
+      }
+
+      // FALLBACK: If sprite not ready, use renderer
+      if (!stationRendered && this.stationRenderer) {
         this.stationRenderer.renderStation(ctx, stX, stY, station, station.rotation, this.PALETTE);
       }
     }
@@ -4386,18 +4473,25 @@ export class Game {
 
     // Player ship
     const p = this.player;
+
+    // SAFETY: Ensure player exists
+    if (!p) {
+      console.error('[Game] Player is null, skipping player render');
+      return;
+    }
+
     // CAMERA FIX: Calculate player screen position (should always be centered due to camera)
     // Don't use Math.floor to avoid sub-pixel jitter
-    const px = p.x - camX;
-    const py = p.y - camY;
+    const px = (p.x || 0) - camX;
+    const py = (p.y || 0) - camY;
 
     ctx.save();
     ctx.translate(px, py);
-    ctx.rotate(p.rotation);
+    ctx.rotate(p.rotation || 0);
 
     // OLD Warp effect (DISABLED - replaced by black hole effect)
     // Skip this if black hole effect is active to prevent lag
-    if (p.warpCharge > 0.15 && !this.blackHoleWarpEffect.active) {
+    if (p.warpCharge > 0.15 && !(this.blackHoleWarpEffect && this.blackHoleWarpEffect.active)) {
       const warpAlpha = p.warpCharge * 0.6;
       ctx.strokeStyle = this.PALETTE.warpPurple;
       ctx.globalAlpha = warpAlpha;
@@ -4843,27 +4937,65 @@ export class Game {
 
     // FIX: Removed extra ctx.restore() - zoom transforms were removed so no second restore needed
 
+    // Render enhanced effects system (particles, shields, explosions, debris)
+    if (this.enhancedEffectsSystem) {
+      try {
+        this.enhancedEffectsSystem.render(ctx, camX, camY);
+      } catch (error) {
+        console.error('[Game] Enhanced effects render error:', error);
+        // Disable system if it keeps failing
+        if (!this._enhancedEffectsErrors) this._enhancedEffectsErrors = 0;
+        this._enhancedEffectsErrors++;
+        if (this._enhancedEffectsErrors > 10) {
+          console.warn('[Game] Disabling enhanced effects system due to repeated errors');
+          this.enhancedEffectsSystem = null;
+        }
+      }
+    }
+
     // HUD (rendered without zoom)
-    this.hudRenderer.render();
+    if (this.hudRenderer) {
+      try {
+        this.hudRenderer.render();
+      } catch (error) {
+        console.error('[Game] HUD render error:', error);
+      }
+    }
 
     // Mobile controls (new system)
     if (this.mobileControls) {
-      this.mobileControls.render(ctx);
+      try {
+        this.mobileControls.render(ctx);
+      } catch (error) {
+        console.error('[Game] Mobile controls render error:', error);
+      }
     }
 
     // Legacy touch controls (fallback)
-    if ('ontouchstart' in window && !this.mobileControls.isMobile) {
-      this.renderTouchControls();
+    if ('ontouchstart' in window && this.mobileControls && !this.mobileControls.isMobile) {
+      try {
+        this.renderTouchControls();
+      } catch (error) {
+        console.error('[Game] Touch controls render error:', error);
+      }
     }
 
     // Render UI screens (inventory, trading, diplomacy, map)
     if (this.uiRenderer) {
-      this.uiRenderer.render(ctx);
+      try {
+        this.uiRenderer.render(ctx);
+      } catch (error) {
+        console.error('[Game] UI renderer error:', error);
+      }
     }
 
     // VISUAL ENHANCEMENT: Apply retro screen effects (scanlines, vignette, phosphor glow)
     if (this.retroScreenEffects) {
-      this.retroScreenEffects.applyEffects(this.width, this.height);
+      try {
+        this.retroScreenEffects.applyEffects(this.width, this.height);
+      } catch (error) {
+        console.error('[Game] Retro screen effects error:', error);
+      }
     }
     } catch (error) {
       // CRASH PREVENTION: Log error but don't crash the game
@@ -5695,34 +5827,64 @@ export class Game {
 
   /**
    * Common features all ships share: engine glow, thrusters, lights
-   * REMOVED: Engine glow for cleaner ship appearance
+   * ENHANCED: Using new enhanced effects system for realistic particle effects
    */
   renderCommonShipFeatures(ctx, p, engineX) {
-    // Engine exhaust (small pixelated flame, no glow)
-    if (this.input.thrust > 0) {
-      const enginePulse = Math.sin(this.time * 20) * 0.3 + 0.7;
+    // Enhanced engine thrust effects (using new particle system)
+    if (this.input.thrust > 0 && this.enhancedEffectsSystem) {
+      // Calculate world position of engine exhaust
+      const cos = Math.cos(p.angle);
+      const sin = Math.sin(p.angle);
+      const localEngineX = engineX;
+      const localEngineY = 0;
 
-      // Small bright exhaust flame (no gradient glow)
-      ctx.fillStyle = this.PALETTE.engineBright;
-      ctx.fillRect(engineX - 4, -2, 4, 4);
+      // Transform local engine position to world coordinates
+      const worldEngineX = p.x + (localEngineX * cos - localEngineY * sin);
+      const worldEngineY = p.y + (localEngineX * sin + localEngineY * cos);
 
-      // Inner bright core
-      ctx.fillStyle = this.PALETTE.starWhite;
-      ctx.fillRect(engineX - 2, -1, 2, 2);
+      // Create realistic engine thrust effect
+      const thrustPower = this.input.thrust;
+      this.enhancedEffectsSystem.createEngineThrustEffect(
+        worldEngineX,
+        worldEngineY,
+        p.angle,
+        thrustPower,
+        '#64c8ff' // Blue thrust color
+      );
     }
 
-    // Side thrusters for turning
-    if (p.angularVelocity < -0.01) {
-      const thrustIntensity = Math.min(Math.abs(p.angularVelocity) * 20, 1);
-      const thrustPulse = Math.sin(this.time * 25) * 0.4 + 0.6;
-      ctx.fillStyle = `${this.PALETTE.engineOrange}${Game.alphaToHex(thrustIntensity * thrustPulse * 180)}`;
-      ctx.fillRect(8, 8, 3, 6);
-    }
-    if (p.angularVelocity > 0.01) {
-      const thrustIntensity = Math.min(Math.abs(p.angularVelocity) * 20, 1);
-      const thrustPulse = Math.sin(this.time * 25) * 0.4 + 0.6;
-      ctx.fillStyle = `${this.PALETTE.engineOrange}${Game.alphaToHex(thrustIntensity * thrustPulse * 180)}`;
-      ctx.fillRect(8, -14, 3, 6);
+    // Enhanced side thruster effects for turning
+    if (this.enhancedEffectsSystem) {
+      if (p.angularVelocity < -0.01) {
+        const thrustIntensity = Math.min(Math.abs(p.angularVelocity) * 20, 1);
+
+        // Calculate world position of bottom thruster (fires when turning CCW)
+        const cos = Math.cos(p.angle);
+        const sin = Math.sin(p.angle);
+        const localX = 8;
+        const localY = 11;
+        const worldX = p.x + (localX * cos - localY * sin);
+        const worldY = p.y + (localX * sin + localY * cos);
+
+        this.enhancedEffectsSystem.createSideThrusterEffect(
+          worldX, worldY, p.angle, 'right', thrustIntensity
+        );
+      }
+      if (p.angularVelocity > 0.01) {
+        const thrustIntensity = Math.min(Math.abs(p.angularVelocity) * 20, 1);
+
+        // Calculate world position of top thruster (fires when turning CW)
+        const cos = Math.cos(p.angle);
+        const sin = Math.sin(p.angle);
+        const localX = 8;
+        const localY = -11;
+        const worldX = p.x + (localX * cos - localY * sin);
+        const worldY = p.y + (localX * sin + localY * cos);
+
+        this.enhancedEffectsSystem.createSideThrusterEffect(
+          worldX, worldY, p.angle, 'left', thrustIntensity
+        );
+      }
     }
 
     // Navigation lights
